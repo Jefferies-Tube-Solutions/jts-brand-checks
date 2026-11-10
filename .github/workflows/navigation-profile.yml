@@ -1,0 +1,48 @@
+name: Verify Navigation profile
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  verify-navigation:
+    name: Verify Navigation and legacy branding
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@v5
+        with:
+          repository: Jefferies-Tube-Solutions/jefferies-navigation
+          ref: c6268ba6aa580e6f8305f5b0917c6d0e7e27baf7
+          path: navigation-v2
+          persist-credentials: false
+      - uses: actions/checkout@v5
+        with:
+          repository: Jefferies-Tube-Solutions/jefferies-navigation
+          ref: 25291186b07bfee81b8877fe731e00a417d56c12
+          path: honeycomb-v1
+          persist-credentials: false
+      - name: Verify Navigation and Honeycomb reference checkouts
+        run: |
+          export GITHUB_REPOSITORY=Jefferies-Tube-Solutions/jefferies-navigation
+          GITHUB_WORKSPACE="$PWD/navigation-v2" python3 validate.py
+          # The v1 release predates the required JTS policy reference.
+          printf '\n## JTS Brand System\nPolicy: jts-brand-system\n' >> honeycomb-v1/AGENTS.md
+          GITHUB_WORKSPACE="$PWD/honeycomb-v1" python3 validate.py
+      - name: Reject an unapproved Navigation validator
+        run: |
+          printf '\n// changed for verification\n' >> navigation-v2/scripts/check-brand.js
+          if output=$(GITHUB_REPOSITORY=Jefferies-Tube-Solutions/jefferies-navigation \
+            GITHUB_WORKSPACE="$PWD/navigation-v2" python3 validate.py 2>&1); then
+            echo "Expected a changed validator to fail"
+            exit 1
+          fi
+          printf '%s\n' "$output"
+          grep -Fq 'changed without a reviewed JTS pin update' <<< "$output"

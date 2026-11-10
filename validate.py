@@ -5,6 +5,7 @@ import json
 import os
 from pathlib import Path
 import re
+import subprocess
 
 
 PROFILES = {
@@ -27,6 +28,8 @@ PROFILES = {
 }
 MARKDOWN_LINK = re.compile(r"\]\(([^)]+)\)")
 README_IMAGE = re.compile(r'<img\b[^>]*\bsrc="([^"]+)"')
+NAVIGATION_VALIDATOR_SHA256 = "bbb84acc468d510a098fe39937e7dedece2ab445ef17377ea0d6ae33693275e2"
+HONEYCOMB_LOGO_BLOB = "b86d9f007db8b2c7460085fbb7fa4b3e2213eaf7"
 
 
 def project_file(root, path):
@@ -79,6 +82,42 @@ def validate_artwork(root, readme, repository, profile, version, status):
     print("VIS-001 and VIS-002: README and registered artwork verified")
 
 
+def validate_navigation(root):
+    instructions = project_file(root, "AGENTS.md").read_text(encoding="utf-8")
+    if "## JTS Brand System" not in instructions or "jts-brand-system" not in instructions:
+        raise SystemExit("AGENTS.md must reference JTS Brand System")
+
+    package = json.loads(project_file(root, "package.json").read_text(encoding="utf-8"))
+    if package["name"] == "jefferies-navigation":
+        validator = project_file(root, "scripts/check-brand.js")
+        source = validator.read_text(encoding="utf-8").encode()
+        if hashlib.sha256(source).hexdigest() != NAVIGATION_VALIDATOR_SHA256:
+            raise SystemExit("Navigation brand validator changed without a reviewed JTS pin update")
+        subprocess.run(["node", str(validator)], cwd=root, check=True)
+        return
+
+    if package["name"] != "honeycomb-menu-ng":
+        raise SystemExit("Unrecognized Navigation or legacy Honeycomb package identity")
+    logo = project_file(root, "assets/honeycomb-menu-ng-logo.png").read_bytes()
+    blob = f"blob {len(logo)}\0".encode() + logo
+    if hashlib.sha1(blob).hexdigest() != HONEYCOMB_LOGO_BLOB:
+        raise SystemExit("Legacy Honeycomb logo changed without a reviewed JTS migration")
+    readme = project_file(root, "README.md").read_text(encoding="utf-8")
+    if not readme.startswith('<p align="right">') or not re.search(
+        r"github/v/release/[^?]+\?label=stable&amp;color=2ea44f", readme
+    ):
+        raise SystemExit("Legacy Honeycomb README must retain its stable release badge")
+    for marker in (
+        'src="assets/honeycomb-menu-ng-logo.png"',
+        "# Honeycomb Menu NG for Home Assistant",
+        "Sian Croser",
+        "[GPLv3](LICENSE)",
+    ):
+        if marker not in readme:
+            raise SystemExit(f"Legacy Honeycomb README must preserve {marker}")
+    print("Legacy Honeycomb release identity, artwork and attribution verified")
+
+
 def main():
     root = Path(os.environ["GITHUB_WORKSPACE"]).resolve()
     repository = os.environ["GITHUB_REPOSITORY"]
@@ -86,6 +125,9 @@ def main():
         from tariff_engine import validate
 
         validate(root)
+        return
+    if repository.lower() == "jefferies-tube-solutions/jefferies-navigation":
+        validate_navigation(root)
         return
     profile = PROFILES.get(repository.lower())
     if profile is None:
