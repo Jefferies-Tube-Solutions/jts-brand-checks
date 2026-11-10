@@ -82,6 +82,11 @@ def validate_artwork(root, readme, repository, profile, version, status):
 def main():
     root = Path(os.environ["GITHUB_WORKSPACE"]).resolve()
     repository = os.environ["GITHUB_REPOSITORY"]
+    if repository.lower() == "jefferies-tube-solutions/jts-tariff-engine":
+        from tariff_engine import validate
+
+        validate(root)
+        return
     profile = PROFILES.get(repository.lower())
     if profile is None:
         raise SystemExit(f"No approved JTS profile for {repository}")
