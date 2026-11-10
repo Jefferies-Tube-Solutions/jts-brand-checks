@@ -6,9 +6,11 @@ Shared GitHub checks for public Jefferies Tube Solutions projects. The check imp
 
 In a GitHub Actions job, check out the project and call this composite action using a full commit SHA. Run it on every pull request and require that job in the ruleset for the target branch.
 
-The profiles cover Dashboard Beam and Tariff Engine. To onboard a project, add a reviewed profile with its version file and approved public artwork hashes. Changes to approved artwork require coordinated updates to the profile and the project's provenance.
+The profiles cover Dashboard Beam, Tariff Engine and Jefferies Navigation. To onboard a project, add a reviewed profile with its version file and approved public artwork hashes. Changes to approved artwork require coordinated updates to the profile and the project's provenance.
 
 Tariff Engine retains its existing README layout, asset gallery and Home Assistant identity checks. Its validator was adapted from [Tariff Engine's original MIT-licensed validator](https://github.com/Jefferies-Tube-Solutions/jts-tariff-engine/blob/4d856cc703423fc591280811cca10b0aa5fa0c12/tools/validate_brand.py).
+
+The Navigation profile checks legacy Honeycomb branding directly and runs Navigation v2's existing brand validator after verifying its SHA-256 checksum. A deliberate change to that validator requires a reviewed checksum update here before the project can adopt it.
 
 ## Verification
 
