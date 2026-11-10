@@ -7,11 +7,15 @@ from pathlib import Path
 import re
 import subprocess
 
+from readme_badges import EXCLUDE_START, render_badges
+
 
 PROFILES = {
     "jefferies-tube-solutions/dashboard-beam": {
         "brand_version": "v1.1.0",
         "version_file": "custom_components/dashboard_beam/manifest.json",
+        "badge_workflow": "validate.yml",
+        "license": "MIT",
         "images": (
             "docs/brand/jts-white-transparent.png#gh-dark-mode-only",
             "docs/brand/jts-deep-space-transparent.png#gh-light-mode-only",
@@ -65,6 +69,11 @@ def validate_manuals(root, readme, version, status):
 
 
 def validate_artwork(root, readme, repository, profile, version, status):
+    expected_readme = render_badges(root, readme, repository, profile["badge_workflow"],
+                                    profile.get("branch", "main"), profile["license"])
+    if readme != expected_readme:
+        raise SystemExit("VIS-002: README badge row differs from the generated JTS header")
+    readme = readme.removeprefix(EXCLUDE_START + "\n")
     badge, _, content = readme.partition("</p>")
     expected_badge = (
         f'alt="draft | v{version}"' if status == "draft" else
